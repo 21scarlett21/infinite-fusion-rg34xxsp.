@@ -1,3 +1,5 @@
+
+
 name: Build Infinite Fusion Engine V4
 
 on:
@@ -26,25 +28,7 @@ jobs:
 
           sudo apt-get update
 
-          sudo apt-get install -y \
-
-            git build-essential cmake ninja-build pkg-config \
-
-            python3 python3-pip python3-venv file binutils \
-
-            libssl-dev libsdl2-dev libsdl2-image-dev \
-
-            libsdl2-ttf-dev libsdl2-mixer-dev \
-
-            libopenal-dev libvorbis-dev libogg-dev \
-
-            libphysfs-dev libboost-dev libfreetype6-dev \
-
-            libgl1-mesa-dev libgles2-mesa-dev \
-
-            libegl1-mesa-dev libpng-dev libjpeg-dev \
-
-            libfluidsynth-dev liblua5.1-0-dev
+          sudo apt-get install -y git build-essential cmake ninja-build pkg-config python3 python3-pip python3-venv file binutils libssl-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libopenal-dev libvorbis-dev libogg-dev libphysfs-dev libboost-dev libfreetype6-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libpng-dev libjpeg-dev libfluidsynth-dev liblua5.1-0-dev
 
       - name: Install Meson
 
@@ -54,39 +38,31 @@ jobs:
 
           /tmp/meson-env/bin/pip install --upgrade meson
 
+          /tmp/meson-env/bin/meson --version
+
       - name: Download mkxp-z
 
         run: |
 
-          git clone --recursive \
-
-            https://github.com/mkxp-z/mkxp-z.git engine
+          git clone --recursive https://github.com/mkxp-z/mkxp-z.git engine
 
       - name: Configure ARM64 build
 
         run: |
 
-          /tmp/meson-env/bin/meson setup \
-
-            engine/build engine \
-
-            --buildtype=release
+          /tmp/meson-env/bin/meson setup engine/build engine --buildtype=release
 
       - name: Compile engine
 
         run: |
 
-          /tmp/meson-env/bin/meson compile \
-
-            -C engine/build
+          /tmp/meson-env/bin/meson compile -C engine/build
 
       - name: Inspect build targets
 
         run: |
 
-          /tmp/meson-env/bin/meson introspect \
-
-            engine/build --targets > targets.json
+          /tmp/meson-env/bin/meson introspect engine/build --targets > targets.json
 
           python3 -m json.tool targets.json
 
@@ -104,13 +80,7 @@ jobs:
 
           uname -m > package/diagnostics/architecture.txt
 
-          find engine/build -type f \
-
-            -perm /111 \
-
-            -exec file {} \; \
-
-            > package/diagnostics/executable-scan.txt
+          find engine/build -type f -perm /111 -exec file {} \; > package/diagnostics/executable-scan.txt
 
           python3 - <<'PY'
 
@@ -214,17 +184,9 @@ jobs:
 
           if not found:
 
-              print(
+              print("No ARM64 executable target was produced.")
 
-                  "No ARM64 executable target was produced."
-
-              )
-
-              print(
-
-                  "See targets.json for available targets."
-
-              )
+              print("See targets.json for available targets.")
 
               raise SystemExit(1)
 
