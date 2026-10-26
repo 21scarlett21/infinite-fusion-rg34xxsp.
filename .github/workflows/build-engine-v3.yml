@@ -26,7 +26,17 @@ jobs:
 
           sudo apt-get update
 
-          sudo apt-get install -y git build-essential cmake meson ninja-build pkg-config python3 python3-pip libssl-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libopenal-dev libvorbis-dev libogg-dev libphysfs-dev libboost-dev libfreetype6-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libpng-dev libjpeg-dev libfluidsynth-dev liblua5.1-0-dev
+          sudo apt-get install -y git build-essential cmake ninja-build pkg-config python3 python3-pip python3-venv libssl-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libopenal-dev libvorbis-dev libogg-dev libphysfs-dev libboost-dev libfreetype6-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libpng-dev libjpeg-dev libfluidsynth-dev liblua5.1-0-dev
+
+      - name: Install newer Meson
+
+        run: |
+
+          python3 -m venv /tmp/meson-env
+
+          /tmp/meson-env/bin/pip install --upgrade meson
+
+          /tmp/meson-env/bin/meson --version
 
       - name: Download mkxp-z
 
@@ -40,17 +50,15 @@ jobs:
 
           find engine -maxdepth 3 -name meson.build -print
 
-          find engine -maxdepth 3 -name CMakeLists.txt -print
-
       - name: Attempt ARM64 build
 
         run: |
 
           cd engine
 
-          meson setup build --buildtype=release
+          /tmp/meson-env/bin/meson setup build --buildtype=release
 
-          meson compile -C build
+          /tmp/meson-env/bin/meson compile -C build
 
       - name: Upload build files
 
