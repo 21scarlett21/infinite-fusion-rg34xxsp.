@@ -20,6 +20,10 @@ jobs:
 
           sudo apt-get update
 
+          sudo apt-get install -y git build-essential cmake meson ninja-build autoconf automake libtool pkg-config ruby bison zlib1g-dev libbz2-dev xorg-dev libgl1-mesa-dev libgles2-mesa-dev libasound2-dev libpulse-dev xxd
+
+          sudo apt-get update
+
           sudo apt-get install -y \
 
             git build-essential cmake meson ninja-build \
