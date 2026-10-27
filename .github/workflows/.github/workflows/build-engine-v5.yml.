@@ -1,0 +1,239 @@
+name: Build Infinite Fusion Engine V5
+
+on:
+
+  workflow_dispatch:
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-24.04-arm
+
+    timeout-minutes: 120
+
+    steps:
+
+      - name: Install dependencies
+
+        run: |
+
+          sudo apt-get update
+
+          sudo apt-get install -y \
+
+            git build-essential cmake ninja-build \
+
+            pkg-config python3 python3-venv \
+
+            file binutils patchelf \
+
+            libssl-dev libsdl2-dev \
+
+            libsdl2-image-dev libsdl2-ttf-dev \
+
+            libsdl2-mixer-dev libopenal-dev \
+
+            libvorbis-dev libogg-dev \
+
+            libphysfs-dev libboost-dev \
+
+            libfreetype6-dev libgl1-mesa-dev \
+
+            libgles2-mesa-dev libegl1-mesa-dev \
+
+            libpng-dev libjpeg-dev \
+
+            libfluidsynth-dev liblua5.1-0-dev
+
+      - name: Install Meson
+
+        run: |
+
+          python3 -m venv /tmp/meson-env
+
+          /tmp/meson-env/bin/pip install meson
+
+          /tmp/meson-env/bin/meson --version
+
+      - name: Download engine
+
+        run: |
+
+          git clone --recursive \
+
+            https://github.com/mkxp-z/mkxp-z.git engine
+
+          git -C engine rev-parse HEAD > engine-commit.txt
+
+      - name: Configure
+
+        run: |
+
+          /tmp/meson-env/bin/meson setup \
+
+            engine/build engine \
+
+            --buildtype=release
+
+      - name: Compile
+
+        run: |
+
+          /tmp/meson-env/bin/meson compile \
+
+            -C engine/build -v
+
+      - name: Package and inspect
+
+        shell: bash
+
+        run: |
+
+          set -euo pipefail
+
+          mkdir -p package/bin package/diagnostics
+
+          cp engine-commit.txt package/diagnostics/
+
+          uname -a > package/diagnostics/host.txt
+
+          /tmp/meson-env/bin/meson introspect \
+
+            engine/build --targets \
+
+            > package/diagnostics/targets.json
+
+          python3 - <<'PY'
+
+          import json
+
+          import pathlib
+
+          import shutil
+
+          import subprocess
+
+          root = pathlib.Path("package")
+
+          targets = json.loads(
+
+              (root / "diagnostics/targets.json").read_text()
+
+          )
+
+          found = []
+
+          for target in targets:
+
+              if target.get("type") != "executable":
+
+                  continue
+
+              paths = target.get("filename", [])
+
+              if isinstance(paths, str):
+
+                  paths = [paths]
+
+              for name in paths:
+
+                  path = pathlib.Path(name)
+
+                  if not path.is_file():
+
+                      continue
+
+                  info = subprocess.run(
+
+                      ["file", "-b", str(path)],
+
+                      capture_output=True, text=True
+
+                  ).stdout
+
+                  if "ELF" not in info or \
+
+                     "ARM aarch64" not in info:
+
+                      continue
+
+                  shutil.copy2(path, root / "bin/path-placeholder")
+
+                  destination = root / "bin" / path.name
+
+                  (root / "bin/path-placeholder").rename(
+
+                      destination
+
+                  )
+
+                  for command in ("file", "readelf", "ldd"):
+
+                      args = {
+
+                          "file": ["file", str(path)],
+
+                          "readelf": [
+
+                              "readelf", "-d", str(path)
+
+                          ],
+
+                          "ldd": ["ldd", str(path)]
+
+                      }[command]
+
+                      result = subprocess.run(
+
+                          args, capture_output=True,
+
+                          text=True
+
+                      )
+
+                      (root / "diagnostics" /
+
+                       (path.name + "." + command + ".txt")
+
+                      ).write_text(
+
+                          result.stdout + result.stderr
+
+                      )
+
+                  found.append(path.name)
+
+          (root / "diagnostics/result.txt").write_text(
+
+              "ARM64 executables: " + repr(found)
+
+          )
+
+          if not found:
+
+              raise SystemExit(
+
+                  "No ARM64 executable produced. "
+
+                  "Inspect targets.json."
+
+              )
+
+          print("Packaged:", found)
+
+          PY
+
+      - name: Upload diagnostic build
+
+        if: always()
+
+        uses: actions/upload-artifact@v4
+
+        with:
+
+          name: mkxp-z-arm64-v5
+
+          path: package/
+
+          if-no-files-found: warn
